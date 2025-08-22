@@ -1,4 +1,4 @@
-const { PrismaClient } = require('../generated/prisma');
+const { PrismaClient } = require('@prisma/client');
 const SafiraService = require('./payments/safira.service');
 const PixupService = require('./payments/pixup.service');
 const DigitoService = require('./payments/digito.service');

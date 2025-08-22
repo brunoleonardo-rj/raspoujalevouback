@@ -1,4 +1,5 @@
-const { PrismaClient } = require('../generated/prisma');
+const { PrismaClient } = require('@prisma/client');
+
 const { createClient } = require('@supabase/supabase-js');
 const prisma = new PrismaClient();
 

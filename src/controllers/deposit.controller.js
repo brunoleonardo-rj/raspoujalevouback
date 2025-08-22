@@ -1,6 +1,6 @@
 
 const depositService = require('../services/deposit.service');
-const { PrismaClient } = require('../generated/prisma');
+const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 class DepositController {
