@@ -1,4 +1,5 @@
 require('dotenv').config?.();
+const app = require('./src/app');
 const express = require('express');
 const compression = require('compression');
 const helmet = require('helmet');
@@ -29,7 +30,7 @@ const prisma = new PrismaClient();
   }
 })();
 
-const app = require('./src/app');
+
 const PORT = process.env.PORT || 7778;
 const HOST = process.env.HOST || '0.0.0.0';
 app.listen(PORT, HOST, () => {
