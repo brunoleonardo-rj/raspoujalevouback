@@ -1,5 +1,4 @@
-
-const { PrismaClient } = require('../generated/prisma');
+const { PrismaClient } = require('@prisma/client');
 
 // Configuração do Prisma Client com pooling e otimizações
 const prismaConfig = {
@@ -8,8 +7,9 @@ const prismaConfig = {
       url: process.env.DATABASE_URL,
     },
   },
-  // Configurações de connection pooling
-  log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
+  log: process.env.NODE_ENV === 'development'
+    ? ['query', 'info', 'warn', 'error']
+    : ['error'],
   errorFormat: 'pretty',
 };
 
@@ -19,21 +19,17 @@ class DatabaseConnection {
     if (!DatabaseConnection.instance) {
       this.prisma = new PrismaClient(prismaConfig);
       DatabaseConnection.instance = this;
-      
+
       // Event listeners para monitoramento da conexão
       this.setupEventListeners();
     }
-    
+
     return DatabaseConnection.instance;
   }
 
   setupEventListeners() {
-    // Log de conexão bem-sucedida
-    this.prisma.$on('info', (e) => {
-      console.log('📊 Database Info:', e.message);
-    });
+    this.prisma.$on('info', (e) => console.log('📊 Database Info:', e.message));
 
-    // Log de queries em desenvolvimento
     if (process.env.NODE_ENV === 'development') {
       this.prisma.$on('query', (e) => {
         console.log('🔍 Query:', e.query);
@@ -41,23 +37,14 @@ class DatabaseConnection {
       });
     }
 
-    // Log de warnings
-    this.prisma.$on('warn', (e) => {
-      console.warn('⚠️  Database Warning:', e.message);
-    });
-
-    // Log de erros
-    this.prisma.$on('error', (e) => {
-      console.error('❌ Database Error:', e.message);
-    });
+    this.prisma.$on('warn', (e) => console.warn('⚠️  Database Warning:', e.message));
+    this.prisma.$on('error', (e) => console.error('❌ Database Error:', e.message));
   }
 
-  // Método para obter a instância do Prisma
   getClient() {
     return this.prisma;
   }
 
-  // Método para testar a conexão
   async testConnection() {
     try {
       await this.prisma.$queryRaw`SELECT 1`;
@@ -69,7 +56,6 @@ class DatabaseConnection {
     }
   }
 
-  // Método para desconectar (usado no shutdown da aplicação)
   async disconnect() {
     try {
       await this.prisma.$disconnect();
@@ -79,7 +65,6 @@ class DatabaseConnection {
     }
   }
 
-  // Método para reconectar em caso de falha
   async reconnect() {
     try {
       await this.disconnect();
@@ -98,7 +83,6 @@ class DatabaseConnection {
 const databaseConnection = new DatabaseConnection();
 const prisma = databaseConnection.getClient();
 
-// Tratamento de sinais para graceful shutdown
 process.on('SIGINT', async () => {
   console.log('\n🛑 Received SIGINT, closing database connection...');
   await databaseConnection.disconnect();
@@ -111,7 +95,6 @@ process.on('SIGTERM', async () => {
   process.exit(0);
 });
 
-// Tratamento de erros não capturados
 process.on('uncaughtException', async (error) => {
   console.error('💥 Uncaught Exception:', error);
   await databaseConnection.disconnect();
@@ -124,12 +107,10 @@ process.on('unhandledRejection', async (reason, promise) => {
   process.exit(1);
 });
 
-// Exportar instância do Prisma e métodos utilitários
 module.exports = {
   prisma,
   testConnection: () => databaseConnection.testConnection(),
   disconnect: () => databaseConnection.disconnect(),
   reconnect: () => databaseConnection.reconnect(),
-  DatabaseConnection
-
+  DatabaseConnection,
 };
