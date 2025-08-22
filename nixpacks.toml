@@ -1,0 +1,11 @@
+[phases.setup]
+# Node 18 + OpenSSL (para bcrypt/jwt etc.)
+nixPkgs = ["nodejs_18", "openssl"]
+
+[phases.install]
+# Força usar npm em vez de yarn (foge do --frozen-lockfile)
+cmds = ["npm install"]
+
+[start]
+# Usa seu script de start do package.json
+cmd = "npm run start"
