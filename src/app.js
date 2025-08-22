@@ -6,11 +6,11 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 
-// Middlewares customizados
+// Importar middlewares personalizados
 const authMiddleware = require('./middleware/auth.middleware');
 const uploadMiddleware = require('./middleware/upload.middleware');
 
-// Rotas
+// Importar rotas
 const authRoutes = require('./routes/auth.routes');
 const userRoutes = require('./routes/user.routes');
 const scratchCardRoutes = require('./routes/scratchcard.routes');
@@ -20,11 +20,13 @@ const licenseRoutes = require('./routes/license.routes');
 const settingRoutes = require('./routes/setting.routes');
 const webhookRoutes = require('./routes/webhook.routes');
 
-// App
+// Criar instância do Express
 const app = express();
+
+// Configurar proxy trust (para obter IP real atrás de proxies)
 app.set('trust proxy', 1);
 
-// Segurança
+// Middlewares de segurança
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -37,7 +39,7 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false
 }));
 
-// CORS
+// CORS configurado
 app.use(cors({
   origin: '*',
   credentials: true,
@@ -45,10 +47,10 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
-// Rate limit global
+// Rate limiting global
 const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 1000,
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 1000, // máximo 1000 requisições por IP por janela
   message: {
     success: false,
     message: 'Muitas requisições deste IP, tente novamente mais tarde'
@@ -58,16 +60,24 @@ const globalLimiter = rateLimit({
 });
 app.use(globalLimiter);
 
-// Compressão + logs
+// Compressão de resposta
 app.use(compression());
-app.use(process.env.NODE_ENV === 'development' ? morgan('dev') : morgan('combined'));
 
-// Body parsers
-app.use(express.json({
+// Logging de requisições
+if (process.env.NODE_ENV === 'development') {
+  app.use(morgan('dev'));
+} else {
+  app.use(morgan('combined'));
+}
+
+// Parsing de JSON e URL encoded
+app.use(express.json({ 
   limit: '10mb',
   verify: (req, res, buf) => {
-    try { JSON.parse(buf); }
-    catch (e) {
+    try {
+      JSON.parse(buf);
+    } catch (e) {
+      // Não enviar resposta aqui, deixar para o middleware de erro
       const error = new Error('JSON inválido');
       error.status = 400;
       error.type = 'entity.parse.failed';
@@ -75,15 +85,19 @@ app.use(express.json({
     }
   }
 }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Estáticos
+app.use(express.urlencoded({ 
+  extended: true, 
+  limit: '10mb' 
+}));
+
+// Servir arquivos estáticos (uploads)
 app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 
-// Log de request
+// Middleware de log personalizado
 app.use(authMiddleware.logRequest);
 
-// Healthcheck
+// Rota de health check
 app.get('/health', (req, res) => {
   res.status(200).json({
     success: true,
@@ -94,17 +108,29 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Raiz
+// Rota raiz
 app.get('/', (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Olá amigo, o que perdeu aqui?',
     version: '1.0.0',
+    // documentation: '/api/docs',
+    // endpoints: {
+    //   auth: '/api/auth',
+    //   users: '/api/users',
+    //   scratchcards: '/api/scratchcards',
+    //   deposits: '/api/deposits',
+    //   admin: '/api/admin',
+    //   license: '/api/license',
+    //   health: '/health'
+    // }
   });
 });
 
-// v1
-const v1Router = '/v1';
+// Versionamento de rotas
+const v1Router = "/v1"
+
+// Rotas da API
 app.use(v1Router + '/api/auth', authRoutes);
 app.use(v1Router + '/api/users', userRoutes);
 app.use(v1Router + '/api/scratchcards', scratchCardRoutes);
@@ -114,7 +140,7 @@ app.use(v1Router + '/api/license', licenseRoutes);
 app.use(v1Router + '/api/setting', settingRoutes);
 app.use(v1Router + '/api/payments', webhookRoutes);
 
-// 404
+// Middleware para rotas não encontradas
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -124,21 +150,23 @@ app.use((req, res) => {
   });
 });
 
-// Erros de upload
+// Middleware de tratamento de erros do upload
 app.use(uploadMiddleware.handleError);
 
-// Erros globais
+// Middleware global de tratamento de erros
 app.use(authMiddleware.errorHandler);
 
-// Falhas não capturadas
+// Tratamento de erros não capturados
 process.on('uncaughtException', (error) => {
   console.error('Erro não capturado:', error);
   process.exit(1);
 });
+
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Promise rejeitada não tratada:', reason);
   console.error('Promise:', promise);
   process.exit(1);
 });
+
 
 module.exports = app;
