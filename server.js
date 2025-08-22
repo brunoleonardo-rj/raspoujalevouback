@@ -1,16 +1,37 @@
 require('dotenv').config?.();
+const express = require('express');
+const compression = require('compression');
+const helmet = require('helmet');
+const morgan = require('morgan');
 
-const app = require('./src/app'); // usa o app que tem as rotas
+const app = express();
+app.use(helmet());
+app.use(compression());
+app.use(express.json());
+app.use(morgan('dev'));
 
-// (opcional) teste rápido do DB sem derrubar o processo
+// healthcheck simples (não toca em DB)
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', ts: new Date().toISOString() });
+});
+
+// EXEMPLO: inicialização “preguiçosa” do Prisma
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-prisma.$queryRaw`SELECT 1`
-  .then(() => console.log('DB pronto.'))
-  .catch(e => console.error('DB indisponível no boot:', e.message));
 
+// não faça process.exit se falhar
+(async () => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    console.log('DB pronto.');
+  } catch (e) {
+    console.error('DB indisponível no boot:', e.message);
+  }
+})();
+
+const app = require('./src/app');
 const PORT = process.env.PORT || 7778;
-const HOST = '0.0.0.0';
+const HOST = process.env.HOST || '0.0.0.0';
 app.listen(PORT, HOST, () => {
   console.log(`API up on http://${HOST}:${PORT}`);
 });
