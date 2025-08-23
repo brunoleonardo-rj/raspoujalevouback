@@ -19,7 +19,7 @@ class DepositService {
     };
     
     // Gateway padrão
-    this.defaultGateway = 'safira';
+    this.defaultGateway = 'pixup';
   }
 
   /**
